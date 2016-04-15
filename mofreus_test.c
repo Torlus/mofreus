@@ -13,6 +13,7 @@ char verify[MAX_SIZE];
 int main(int argc, char *argv[]) {
   FILE *f;
   int size, comp_size, uncp_size;
+  int n;
 
   if (argc <= 1) {
     fprintf(stderr, "Usage: %s <file>", argv[0]);
@@ -38,13 +39,22 @@ int main(int argc, char *argv[]) {
   printf("Source size: %d\n", size);
   comp_size = mofreus_compress(size, source, target);
   printf("Compressed size: %d\n", comp_size);
+
   if (comp_size > 0) {
     uncp_size = mofreus_uncompress(comp_size, target, verify);
     printf("Uncompressed size: %d\n", uncp_size);
-    if (size == uncp_size) {
-      printf("Ratio: %02d%%\n", comp_size * 100 / size);
+    if (size != uncp_size) {
+      printf("File size mismatch!\n");
+      return -3;
+    }
+    printf("Ratio: %02d%%\n", comp_size * 100 / size);
+    for(n = 0; n < size; n++) {
+      if (source[n] != verify[n]) {
+        printf("Diff at position #%d!\n", n);
+        return -4;
+      }
     }
   }
-
+  printf("Done!\n");
   return 0;
 }

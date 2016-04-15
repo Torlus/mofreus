@@ -72,35 +72,34 @@ PUBLIC int mofreus_compress(int size, byte src[], byte dst[]) {
     uses[0xff & top_k[n]] = 1;
   }
   dp = 2 + MRU_COUNT;
-  c = src[0];
+  c = src[2];
   span_char = c;
   span_size = uses[0xff & c];
-  for(sp = 2; sp < size; sp++) {
+  for(sp = 3; sp <= size; sp++) {
     c = src[sp];
-    if ((span_char == c) && (span_size > 0) && (sp != size - 1)) {
+    if ((span_char == c) && (span_size > 0) && (sp != size)) {
       span_size++;
     } else {
       dst[dp++] = span_char;
       if (dp >= size)
         return 0;
-      if (span_size > 0) {
-        // Variable length encoding, LE, 7 bits & MSB as as "continue" marker
-        while (span_size > 0) {
-          if (span_size > 0x7f) {
-            dst[dp++] = (byte)(0x80 | (span_size & 0x7f));
-          } else {
-            dst[dp++] = (byte)span_size;
-          }
-          span_size >>= 7;
-          if (dp >= size)
-            return 0;
+      // Variable length encoding, LE, 7 bits & MSB as as "continue" marker
+      while (span_size > 0) {
+        if (span_size > 0x7f) {
+          dst[dp++] = (byte)(0x80 | (span_size & 0x7f));
+        } else {
+          dst[dp++] = (byte)span_size;
         }
+        span_size >>= 7;
+        if (dp >= size)
+          return 0;
       }
       span_char = c;
       span_size = uses[0xff & c];
     }
   }
   // dst[0] = 'C'; dst[1] = 'M';
+  dst[0] = src[0]; dst[1] = src[1];
   return dp;
 }
 
@@ -121,12 +120,12 @@ PUBLIC int mofreus_uncompress(int size, byte src[], byte dst[]) {
     uses[n] = 0;
   }
   for(n = 0; n < MRU_COUNT; n++) {
-    uses[0xff & src[n + 2]] = 1;
+    uses[0xff & src[2 + n]] = 1;
   }
   dp = 2;
   for(sp = 2 + MRU_COUNT; sp < size; sp++) {
-    c = dst[dp] = src[sp];
-    dp++;
+    c = src[sp];
+    dst[dp++] = c;
     if ((uses[0xff & c] != 0) && (sp != size - 1)) {
       span_char = c;
       c = src[++sp];
@@ -142,6 +141,7 @@ PUBLIC int mofreus_uncompress(int size, byte src[], byte dst[]) {
     }
   }
   // dst[0] = 'B'; dst[1] = 'M';
+  dst[0] = src[0]; dst[1] = src[1];
   return dp;
 }
 
