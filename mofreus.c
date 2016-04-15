@@ -1,22 +1,33 @@
-#include <stdlib.h>
-#include <stdio.h>
+#ifdef JAVA
+package com.torlus.util;
 
-#define MAX_SIZE (4L * 1024L * 1024L)
-#define MRU_COUNT 2
+public class Mofreus {
+#endif
 
-char source[MAX_SIZE];
-char target[MAX_SIZE];
-char verify[MAX_SIZE];
+#ifdef JAVA
+#define PUBLIC public static
+#define PRIVATE private static
+#define ARRAY_INST(type, name, length) type name [] = new type [ length ]
+#define CONST(type, name, value) final type name = value
+#else
+#define byte char
+#define PUBLIC
+#define PRIVATE static
+#define ARRAY_INST(type, name, length) type name [ length ]
+#define CONST(type, name, value) const type name = value
+#endif
 
-static long uses[256];
-static long top_v[MRU_COUNT];
-static char top_k[MRU_COUNT];
+PRIVATE CONST(int, MRU_COUNT, 2);
 
-size_t mofreus_compress(size_t size, char *src, char *dst) {
-  size_t sp, dp;
+PRIVATE ARRAY_INST(int, uses, 256);
+PRIVATE ARRAY_INST(int, top_v, MRU_COUNT);
+PRIVATE ARRAY_INST(byte, top_k, MRU_COUNT);
+
+PUBLIC int mofreus_compress(int size, byte src[], byte dst[]) {
+  int sp, dp;
   int n, i, k;
-  long span_size;
-  char span_char, c;
+  int span_size;
+  byte span_char, c;
 
   if (size <= 2 + MRU_COUNT)
     return 0;
@@ -30,7 +41,7 @@ size_t mofreus_compress(size_t size, char *src, char *dst) {
   }
   for(n = 0; n < MRU_COUNT; n++) {
     top_k[n] = 0;
-    top_v[n] = 0L;
+    top_v[n] = 0;
   }
   // Collect UCPC on source file
   for(sp = 2 + MRU_COUNT; sp < size; sp++) {
@@ -48,7 +59,7 @@ size_t mofreus_compress(size_t size, char *src, char *dst) {
         top_k[i] = top_k[i + 1];
         top_v[i] = top_v[i + 1];
       }
-      top_k[k] = n;
+      top_k[k] = (byte)n;
       top_v[k] = uses[n];
     }
   }
@@ -76,9 +87,9 @@ size_t mofreus_compress(size_t size, char *src, char *dst) {
         // Variable length encoding, LE, 7 bits & MSB as as "continue" marker
         while (span_size > 0) {
           if (span_size > 0x7f) {
-            dst[dp++] = 0x80 | (span_size & 0x7f);
+            dst[dp++] = (byte)(0x80 | (span_size & 0x7f));
           } else {
-            dst[dp++] = span_size;
+            dst[dp++] = (byte)span_size;
           }
           span_size >>= 7;
           if (dp >= size)
@@ -89,15 +100,15 @@ size_t mofreus_compress(size_t size, char *src, char *dst) {
       span_size = uses[0xff & c];
     }
   }
-  // src[0] = 'C';
+  // dst[0] = 'C'; dst[1] = 'M';
   return dp;
 }
 
-size_t mofreus_uncompress(size_t size, char *src, char *dst) {
-  size_t sp, dp;
+PUBLIC int mofreus_uncompress(int size, byte src[], byte dst[]) {
+  int sp, dp;
   int n, i, k;
-  long span_size;
-  char span_char, c;
+  int span_size;
+  byte span_char, c;
 
   if (size <= 2 + MRU_COUNT)
     return 0;
@@ -116,7 +127,7 @@ size_t mofreus_uncompress(size_t size, char *src, char *dst) {
   for(sp = 2 + MRU_COUNT; sp < size; sp++) {
     c = dst[dp] = src[sp];
     dp++;
-    if (uses[0xff & c] && (sp != size - 1)) {
+    if ((uses[0xff & c] != 0) && (sp != size - 1)) {
       span_char = c;
       c = src[++sp];
       span_size = 0x7f & c;
@@ -130,45 +141,10 @@ size_t mofreus_uncompress(size_t size, char *src, char *dst) {
         dst[dp++] = span_char;
     }
   }
+  // dst[0] = 'B'; dst[1] = 'M';
   return dp;
 }
 
-
-int main(int argc, char *argv[]) {
-  FILE *f;
-  size_t size, comp_size, uncp_size;
-
-  if (argc <= 1) {
-    fprintf(stderr, "Usage: %s <file>", argv[0]);
-    return 1;
-  }
-
-  f = fopen(argv[1], "r");
-  if (f == NULL) {
-    fprintf(stderr, "Could not open %s for reading.\n", argv[1]);
-    return -1;
-  }
-  fseek(f, 0L, SEEK_END);
-  size = ftell(f);
-  if (size > MAX_SIZE) {
-    fprintf(stderr, "File %s is too large (max: %ld).\n", argv[1], MAX_SIZE);
-    fclose(f);
-    return -2;
-  }
-  fseek(f, 0L, SEEK_SET);
-  fread(source, size, 1, f);
-  fclose(f);
-
-  printf("Source size: %ld\n", size);
-  comp_size = mofreus_compress(size, source, target);
-  printf("Compressed size: %ld\n", comp_size);
-  if (comp_size > 0) {
-    uncp_size = mofreus_uncompress(comp_size, target, verify);
-    printf("Uncompressed size: %ld\n", uncp_size);
-    if (size == uncp_size) {
-      printf("Ratio: %02ld%%\n", comp_size * 100L / size);
-    }
-  }
-
-  return 0;
+#ifdef JAVA
 }
+#endif
