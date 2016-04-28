@@ -17,7 +17,7 @@ public class Mofreus {
 #define CONST(type, name, value) const type name = value
 #endif
 
-PRIVATE CONST(int, MRU_COUNT, 2);
+PRIVATE CONST(int, MRU_COUNT, 4);
 
 PRIVATE ARRAY_INST(int, uses, 256);
 PRIVATE ARRAY_INST(int, top_v, MRU_COUNT);
@@ -35,19 +35,27 @@ PUBLIC int mofreus_compress(int size, byte src[], byte dst[]) {
   // if (src[0] != 'B' || src[1] != 'M')
   //  return 0;
 
-  // Initialize Usage Count Per Character (UCPC)
+  // Initialize Span Use Size Improvement
   for(n = 0; n < 256; n++) {
     uses[n] = 0;
   }
   for(n = 0; n < MRU_COUNT; n++) {
     top_k[n] = 0;
-    top_v[n] = 0;
+    top_v[n] = -(size + 2 + MRU_COUNT);
   }
-  // Collect UCPC on source file
+  span_char = 0;
+  uses[span_char] = (span_char == src[2 + MRU_COUNT] ? 0 : 1);
+  // Collect SUSI on source file
   for(sp = 2 + MRU_COUNT; sp < size; sp++) {
-    uses[0xff & src[sp]]++;
+    c = src[sp];
+    if (c == span_char) {
+      uses[0xff & span_char]++;
+    } else {
+      uses[0xff & span_char]--;
+      span_char = c;
+    }
   }
-  // Bubble-sort UCPC
+  // Bubble-sort SUSI
   for(n = 0; n < 256; n++) {
     k = -1;
     for(i = 0; i < MRU_COUNT; i++) {
@@ -61,6 +69,15 @@ PUBLIC int mofreus_compress(int size, byte src[], byte dst[]) {
       }
       top_k[k] = (byte)n;
       top_v[k] = uses[n];
+    }
+  }
+  // Keep only entries where SUSI > 0
+  if (top_v[MRU_COUNT - 1] < 2 + MRU_COUNT)
+    return 0;
+  for(i = 0; i < MRU_COUNT - 1; i++) {
+    if (top_v[i] <= 0) {
+      top_k[i] = top_k[MRU_COUNT - 1];
+      top_v[i] = top_v[MRU_COUNT - 1];
     }
   }
   // Generate a LUT for RLE-enabled characters
