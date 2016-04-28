@@ -2,6 +2,8 @@ mofreus
 ---
 Basic BMP compression, applying RLE to MOst FREquently USed bytes only.
 
+Update: algorithm has been changed to use Span Use Size Improvement, i.e check if using RLE on a given byte value actually improves the compression.
+
 # About
 
 Simple compression and uncompression routines, with no library dependency.
