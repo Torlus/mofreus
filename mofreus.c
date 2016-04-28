@@ -5,11 +5,13 @@ public class Mofreus {
 #endif
 
 #ifdef JAVA
+#define PACKAGE(pkg, func) func
 #define PUBLIC public static
 #define PRIVATE private static
 #define ARRAY_INST(type, name, length) type name [] = new type [ length ]
 #define CONST(type, name, value) final type name = value
 #else
+#define PACKAGE(pkg, func) pkg ## _ ## func
 #define byte char
 #define PUBLIC
 #define PRIVATE static
@@ -23,7 +25,7 @@ PRIVATE ARRAY_INST(int, uses, 256);
 PRIVATE ARRAY_INST(int, top_v, MRU_COUNT);
 PRIVATE ARRAY_INST(byte, top_k, MRU_COUNT);
 
-PUBLIC int mofreus_compress(int size, byte src[], byte dst[]) {
+PUBLIC int PACKAGE(mofreus, compress)(int size, byte src[], byte dst[]) {
   int sp, dp;
   int n, i, k;
   int span_size;
@@ -120,7 +122,7 @@ PUBLIC int mofreus_compress(int size, byte src[], byte dst[]) {
   return dp;
 }
 
-PUBLIC int mofreus_uncompress(int size, byte src[], byte dst[]) {
+PUBLIC int PACKAGE(mofreus, uncompress)(int size, byte src[], byte dst[]) {
   int sp, dp;
   int n, i, k;
   int span_size;
